@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hero Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --card: #1c2030;
+    --border: #252a38;
+    --accent: #00e5a0;
+    --accent2: #4f8ef7;
+    --accent3: #f7a94f;
+    --accent4: #f74f7a;
+    --text: #e8ecf4;
+    --muted: #6b7590;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .logo span { color: var(--muted); }
+  .header-title { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; }
+  .live-badge { background: rgba(0,229,160,0.12); border: 1px solid var(--accent); color: var(--accent); font-family: var(--mono); font-size: 10px; padding: 3px 10px; border-radius: 2px; letter-spacing: 1px; }
+
+  /* TABS */
+  .tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    gap: 0;
+  }
+  .tab {
+    padding: 14px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+    letter-spacing: .3px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* CONTENT */
+  .content { padding: 24px 32px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* KPI ROW */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .kpi-card.green::before { background: var(--accent); }
+  .kpi-card.blue::before { background: var(--accent2); }
+  .kpi-card.orange::before { background: var(--accent3); }
+  .kpi-card.red::before { background: var(--accent4); }
+  .kpi-label { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .kpi-value { font-family: var(--mono); font-size: 28px; font-weight: 700; line-height: 1; }
+  .kpi-card.green .kpi-value { color: var(--accent); }
+  .kpi-card.blue .kpi-value { color: var(--accent2); }
+  .kpi-card.orange .kpi-value { color: var(--accent3); }
+  .kpi-card.red .kpi-value { color: var(--accent4); }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-big { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  /* CHART CARD */
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .chart-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; opacity: .6; }
+  .chart-wrap { position: relative; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 12px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid rgba(37,42,56,.5); color: var(--text); font-family: var(--mono); font-size: 11px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 2px; font-size: 10px; font-family: var(--mono); }
+  .badge-green { background: rgba(0,229,160,.12); color: var(--accent); }
+  .badge-red { background: rgba(247,79,122,.12); color: var(--accent4); }
+  .badge-orange { background: rgba(247,169,79,.12); color: var(--accent3); }
+
+  /* MINI BAR */
+  .mini-bar-wrap { width: 100%; height: 6px; background: var(--border); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .mini-bar { height: 100%; border-radius: 3px; transition: width .4s; }
+
+  /* DONUT LEGEND */
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { color: var(--text); flex: 1; }
+  .legend-val { font-family: var(--mono); color: var(--muted); font-size: 11px; }
+
+  /* FILTER */
+  .filter-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+  .filter-row label { font-size: 12px; color: var(--muted); }
+  select, .btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: var(--sans);
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus, .btn:hover { border-color: var(--accent); }
+  .btn.active { background: rgba(0,229,160,.1); border-color: var(--accent); color: var(--accent); }
+
+  /* ===== SLICE BAR ===== */
+  .slice-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 48px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .slice-bar::-webkit-scrollbar { height: 0; }
+  .slice-section { display: flex; align-items: center; gap: 8px; padding: 0 16px; border-right: 1px solid var(--border); height: 100%; }
+  .slice-section:first-child { padding-left: 0; }
+  .slice-section.last { border-right: none; margin-left: auto; padding-right: 0; }
+  .slice-label { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .slice-group { display: flex; gap: 4px; }
+  .slice-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 11px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .slice-btn:hover { border-color: var(--accent); color: var(--text); }
+  .slice-btn.active { background: rgba(0,229,160,.1); border-color: var(--accent); color: var(--accent); }
+  .date-range-group { display: flex; align-items: center; gap: 6px; }
+  .date-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    outline: none;
+    color-scheme: dark;
+    width: 120px;
+  }
+  .date-input:focus { border-color: var(--accent); }
+  .date-sep { font-size: 11px; color: var(--muted); }
+  .apply-btn {
+    background: rgba(0,229,160,.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .apply-btn:hover { background: rgba(0,229,160,.2); }
+  .clear-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  /* ===== REFRESH STATUS ===== */
+  .refresh-info { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .refresh-dot.ok { background: var(--accent); }
+  .refresh-dot.syncing { background: var(--accent3); animation: blink .7s infinite; }
+  .refresh-dot.error { background: var(--accent4); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+  .gsheet-config-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 11px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all .15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .gsheet-config-btn:hover, .gsheet-config-btn.open { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ===== GSHEET DRAWER ===== */
+  .gsheet-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 360px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    z-index: 300;
+    transform: translateX(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column;
+    box-shadow: -16px 0 40px rgba(0,0,0,.5);
+  }
+  .gsheet-drawer.open { transform: translateX(0); }
+  .drawer-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .drawer-title { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent2); font-family: var(--mono); }
+  .drawer-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px; }
+  .drawer-close:hover { color: var(--text); }
+  .drawer-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
+  .drawer-field { margin-bottom: 18px; }
+  .drawer-field label { display: block; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .drawer-field input, .drawer-field select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: var(--mono);
+    outline: none;
+  }
+  .drawer-field input:focus, .drawer-field select:focus { border-color: var(--accent2); }
+  .drawer-field input::placeholder { color: var(--muted); font-size: 11px; }
+  .drawer-hint { font-size: 10px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+  .drawer-hint code { background: var(--card); padding: 1px 4px; border-radius: 2px; font-family: var(--mono); }
+  .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .drawer-btn {
+    padding: 9px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: var(--mono);
+    cursor: pointer;
+    letter-spacing: .5px;
+    border: 1px solid;
+    transition: background .15s;
+    text-align: center;
+  }
+  .drawer-btn.primary { background: rgba(79,142,247,.12); border-color: var(--accent2); color: var(--accent2); }
+  .drawer-btn.primary:hover { background: rgba(79,142,247,.22); }
+  .drawer-btn.secondary { background: var(--card); border-color: var(--border); color: var(--muted); }
+  .drawer-btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .drawer-status { margin-top: 12px; font-size: 11px; font-family: var(--mono); padding: 8px 12px; border-radius: 3px; display: none; line-height: 1.5; }
+  .drawer-status.ok { background: rgba(0,229,160,.08); color: var(--accent); border: 1px solid rgba(0,229,160,.2); display: block; }
+  .drawer-status.err { background: rgba(247,79,122,.08); color: var(--accent4); border: 1px solid rgba(247,79,122,.2); display: block; }
+  .drawer-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .ri-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* Scrollable table */
+  .table-scroll { max-height: 300px; overflow-y: auto; }
+  .table-scroll::-webkit-scrollbar { width: 4px; }
+  .table-scroll::-webkit-scrollbar-track { background: var(--border); }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+
+  /* Section label */
+  .section-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  /* PROCESS CARDS */
+  .process-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 16px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 12px; }
+  .process-card:hover { border-color: var(--accent2); background: rgba(79,142,247,.05); }
+  .process-card.active { border-color: var(--accent); background: rgba(0,229,160,.08); }
+  .p-icon { width: 32px; height: 32px; border-radius: 4px; background: rgba(255,255,255,0.05); display: flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:12px; font-weight:700; }
+  .p-name { font-size: 13px; font-weight: 500; }
+
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3, .grid-big { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">OPS<span>//</span>DASHBOARD</div>
+  <div class="header-title" id="dashboardTitle">Overview</div>
+</div>
+
+<div class="tabs">
+  <div class="tab" onclick="switchTab('process')">Select Process</div>
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('calls')">Call Performance</div>
+  <div class="tab" onclick="switchTab('workforce')">Workforce</div>
+  <div class="tab" onclick="switchTab('leads')">Leads & Quality</div>
+  <div class="tab" onclick="switchTab('retail')">Retail</div>
+</div>
+
+<!-- ===== SLICE BAR ===== -->
+<div class="slice-bar" id="sliceBar">
+  <div class="slice-section">
+    <span class="slice-label">View</span>
+    <div class="slice-group">
+      <button class="slice-btn active" id="sbtn-all"     onclick="setSlice('all')">All</button>
+      <button class="slice-btn"        id="sbtn-daily"   onclick="setSlice('daily')">Daily</button>
+      <button class="slice-btn"        id="sbtn-weekly"  onclick="setSlice('weekly')">Weekly</button>
+      <button class="slice-btn"        id="sbtn-monthly" onclick="setSlice('monthly')">Monthly</button>
+    </div>
+  </div>
+  <div class="slice-section">
+    <span class="slice-label">Labels</span>
+    <button class="slice-btn" id="sbtn-labels" onclick="toggleLabels()">On/Off</button>
+  </div>
+  <div class="slice-section">
+    <span class="slice-label">Range</span>
+    <div class="date-range-group">
+      <input type="date" class="date-input" id="dateFrom" />
+      <span class="date-sep">—</span>
+      <input type="date" class="date-input" id="dateTo" />
+      <button class="apply-btn" onclick="applyDateRange()">Apply</button>
+      <button class="clear-btn" onclick="clearDateRange()" title="Clear">✕</button>
+    </div>
+  </div>
+  <div class="slice-section last">
+    <div class="refresh-info">
+      <div class="refresh-dot" id="rDot"></div>
+      <span id="rLabel">Local data</span>
+      <span id="rCountdown" style="display:none;color:var(--muted)"></span>
+    </div>
+    <button class="gsheet-config-btn" id="gsheetOpenBtn" onclick="toggleDrawer()">
+      <span>⬡</span> G·Sheet
+    </button>
+  </div>
+</div>
+
+<!-- ===== GSHEET DRAWER ===== -->
+<div class="gsheet-drawer" id="gsheetDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Google Sheet Source</span>
+    <button class="drawer-close" onclick="toggleDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-field">
+      <label>Google Sheet URL</label>
+      <input type="text" id="gsUrl" placeholder="https://docs.google.com/spreadsheets/d/…/edit" />
+      <div class="drawer-hint">
+        Paste any Google Sheet link. The sheet must be shared as<br>
+        <strong>"Anyone with the link"</strong> → Viewer access.
+      </div>
+    </div>
+    <div class="drawer-field">
+      <label>Date Column (for range filter)</label>
+      <input type="text" id="gsDateCol" placeholder="e.g. Date  (leave blank if none)" />
+      <div class="drawer-hint">Exact column header used to filter by date range. Leave blank to filter by row index.</div>
+    </div>
+    <div class="drawer-field">
+      <label>Process Tabs (Comma Separated)</label>
+      <input type="text" id="gsTabs" placeholder="e.g. Sales, Support, Leads" />
+      <div class="drawer-hint">List the EXACT tab names from your sheet to enable process switching. Leave blank to use default.</div>
+    </div>
+    <div class="drawer-actions">
+      <button class="drawer-btn secondary" onclick="testGSheet()">Test Connection</button>
+      <button class="drawer-btn primary" onclick="saveGSheet()">Save & Reload</button>
+    </div>
+    <div class="drawer-status" id="gsStatus"></div>
+    <hr class="drawer-divider">
+    <div class="drawer-field">
+      <label>Auto-Refresh Interval</label>
+      <div class="ri-group" id="riGroup">
+        <button class="slice-btn" id="ri-1"  onclick="setRI(1)">1 min</button>
+        <button class="slice-btn active" id="ri-5"  onclick="setRI(5)">5 min</button>
+        <button class="slice-btn" id="ri-15" onclick="setRI(15)">15 min</button>
+        <button class="slice-btn" id="ri-30" onclick="setRI(30)">30 min</button>
+        <button class="slice-btn" id="ri-0"  onclick="setRI(0)">Off</button>
+      </div>
+    </div>
+    <div class="drawer-field">
+      <label>How to connect your Google Sheet</label>
+      <div class="drawer-hint">
+        1. Open your Google Sheet<br>
+        2. Click <strong>Share</strong> (top right)<br>
+        3. Under "General access", set to <strong>Anyone with the link</strong><br>
+        4. Copy the sheet URL from the browser address bar<br>
+        5. Paste it above and click <strong>Save &amp; Reload</strong><br><br>
+        ⚠ Your sheet must use the same column names as the current data for charts to work correctly.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ===== SELECT PROCESS ===== -->
+<div class="page" id="page-process">
+  <div class="section-label" style="font-size:12px; margin-bottom:16px;">Available Processes</div>
+  <div class="grid-3" id="processGrid">
+    <!-- Javascript will inject cards here -->
+  </div>
+</div>
+
+<!-- ===== OVERVIEW ===== -->
+<div class="page active" id="page-overview">
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Calls</div>
+      <div class="kpi-value" id="ov-total-calls">495K</div>
+      <div class="kpi-sub" id="ov-total-calls-sub">170K connected · 34.3% rate</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Avg Occupancy</div>
+      <div class="kpi-value" id="ov-occupancy">75.1%</div>
+      <div class="kpi-sub" id="ov-occupancy-sub">Avg work: 75.1%</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Avg FLC Conn.</div>
+      <div class="kpi-value" id="ov-flc">52.4%</div>
+      <div class="kpi-sub" id="ov-flc-sub">SLC avg: 47.6%</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Avg Quality Score</div>
+      <div class="kpi-value" id="ov-accuracy">49.2%</div>
+      <div class="kpi-sub" id="ov-accuracy-sub">Total audits tracked</div>
+    </div>
+  </div>
+
+  <div class="grid-big">
+    <div class="chart-card">
+      <div class="chart-title">Daily Total Calls vs Connected</div>
+      <div class="chart-subtitle">All days with data</div>
+      <div class="chart-wrap"><canvas id="overviewCallsChart" height="100"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Occupancy Distribution</div>
+      <div class="chart-subtitle">Days by occupancy band</div>
+      <div class="chart-wrap"><canvas id="occupancyDistChart" height="180"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Connectivity Trend</div>
+      <div class="chart-subtitle">FLC vs SLC daily %</div>
+      <div class="chart-wrap"><canvas id="connTrendChart" height="120"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Quality Scores</div>
+      <div class="chart-subtitle">Per day with audits</div>
+      <div class="chart-wrap"><canvas id="qualityChart" height="120"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALLS ===== -->
+<div class="page" id="page-calls">
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Calls</div>
+      <div class="kpi-value" id="kpi-total-calls">495K</div>
+      <div class="kpi-sub">All days</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total Connected</div>
+      <div class="kpi-value" id="kpi-connected">170K</div>
+      <div class="kpi-sub">34.3% connect rate</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Avg PPPD</div>
+      <div class="kpi-value" id="kpi-pppd">145</div>
+      <div class="kpi-sub">Connected calls per person per day</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Avg FLC Conn.</div>
+      <div class="kpi-value" id="kpi-flc">52.4%</div>
+      <div class="kpi-sub">First list connectivity</div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-title">Total Calls & Connected — Daily Trend</div>
+    <div class="chart-subtitle">Bars = total calls, line = connected</div>
+    <div class="chart-wrap"><canvas id="callsDailyChart" height="90"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">FLC vs SLC Connectivity %</div>
+      <div class="chart-subtitle">Daily split</div>
+      <div class="chart-wrap"><canvas id="flcSlcChart" height="140"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Connected Call PPPD</div>
+      <div class="chart-subtitle">Per person per day trend</div>
+      <div class="chart-wrap"><canvas id="pppd Chart" height="140"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WORKFORCE ===== -->
+<div class="page" id="page-workforce">
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Avg Occupancy</div>
+      <div class="kpi-value" id="wf-occupancy">75.1%</div>
+      <div class="kpi-sub">Target: 80%+</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Avg Work Time</div>
+      <div class="kpi-value" id="wf-worktime">0.0%</div>
+      <div class="kpi-sub">Time spent on productive calls</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Avg Ready Time %</div>
+      <div class="kpi-value" id="wf-readytime">100.7%</div>
+      <div class="kpi-sub">vs goal</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Total Unplanned</div>
+      <div class="kpi-value" id="wf-unplanned">10</div>
+      <div class="kpi-sub">Unplanned absence days</div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-title">Occupancy % — Daily</div>
+    <div class="chart-subtitle">Agent occupancy per day</div>
+    <div class="chart-wrap"><canvas id="occupancyChart" height="90"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Mandays: Planned vs Actual</div>
+      <div class="chart-subtitle">Head count per day</div>
+      <div class="chart-wrap"><canvas id="mandaysChart" height="140"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Leaves Breakdown</div>
+      <div class="chart-subtitle">Planned vs unplanned absences</div>
+      <div class="chart-wrap"><canvas id="leavesChart" height="140"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LEADS ===== -->
+<div class="page" id="page-leads">
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Avg Interested %</div>
+      <div class="kpi-value">96.9%</div>
+      <div class="kpi-sub">Customer interest rate</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total VeryHot</div>
+      <div class="kpi-value" id="kpi-veryhot">2,491</div>
+      <div class="kpi-sub">High-intent leads</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Total Hot</div>
+      <div class="kpi-value" id="kpi-hot">3,197</div>
+      <div class="kpi-sub">Strong leads</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Avg Quality Score</div>
+      <div class="kpi-value" id="kpi-quality-score">49.2%</div>
+      <div class="kpi-sub">Score across audits</div>
+    </div>
+  </div>
+
+  <div class="grid-big">
+    <div class="chart-card">
+      <div class="chart-title">Lead Temperature Trend</div>
+      <div class="chart-subtitle">VeryHot / Hot / Warm / Normal daily</div>
+      <div class="chart-wrap"><canvas id="leadTempChart" height="120"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Avg Lead Mix</div>
+      <div class="chart-subtitle">Overall distribution</div>
+      <div class="chart-wrap" style="max-width:200px;margin:0 auto"><canvas id="leadDonutChart" height="180"></canvas></div>
+      <div class="donut-legend" id="donut-legend"></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Quality Accuracy by Day</div>
+    <div class="chart-subtitle">% accurate vs total audits</div>
+    <div class="chart-wrap"><canvas id="qualityFullChart" height="80"></canvas></div>
+  </div>
+
+  <!-- DISPOSITION -->
+  <div class="chart-card" style="margin-top:16px">
+    <div class="chart-title">Disposition Breakdown</div>
+    <div class="chart-subtitle">Lead disposition categories over time</div>
+    <div class="grid-2" style="margin-bottom:0">
+      <div class="chart-wrap"><canvas id="dispositionChart" height="160"></canvas></div>
+      <div class="chart-wrap" style="max-width:220px;margin:0 auto">
+        <canvas id="dispositionDonutChart" height="200"></canvas>
+        <div class="donut-legend" id="disposition-legend"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RETAIL ===== -->
+<div class="page" id="page-retail">
+  <div class="kpi-row">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Retails</div>
+      <div class="kpi-value">1,344</div>
+      <div class="kpi-sub">30 days with data</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Avg Daily Target</div>
+      <div class="kpi-value">32</div>
+      <div class="kpi-sub">MTD target per day</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Avg Daily Retail</div>
+      <div class="kpi-value">44.8</div>
+      <div class="kpi-sub">vs target of 32</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Best Day</div>
+      <div class="kpi-value">73</div>
+      <div class="kpi-sub">Monday D6</div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-title">Retail vs MTD Target — Daily</div>
+    <div class="chart-subtitle">Actual retails vs daily target</div>
+    <div class="chart-wrap"><canvas id="retailChart" height="100"></canvas></div>
+  </div>
+
+
+</div>
+
+</div><!-- /content -->
+
+<script>
+const RAW = [{"Day":"Monday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":75.1,"Idle Time %":24.9,"Ready Time Achieved %":96.9,"Total Calls":7095.0,"Total Connected":2634.0,"Connected Call PPPD":146.3,"Flc connectivity%":53.3,"Slc connectivity%":46.7,"Customer is interested %":96.5,"VeryHot":64.0,"Hot":111.0,"Warm":19.0,"Normal":52.0,"Total Retails":null,"MTD Target ":null,"Accurate %":52.8,"Total Audits":36.0,"Label":"Mon D2"},{"Day":"Tuesday","Mandays":19,"Actual Mandays":19.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":73.8,"Idle Time %":26.2,"Ready Time Achieved %":97.6,"Total Calls":6237.0,"Total Connected":2555.0,"Connected Call PPPD":134.5,"Flc connectivity%":58.4,"Slc connectivity%":41.6,"Customer is interested %":94.9,"VeryHot":92.0,"Hot":95.0,"Warm":18.0,"Normal":37.0,"Total Retails":null,"MTD Target ":null,"Accurate %":48.6,"Total Audits":72.0,"Label":"Tue D3"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":78.5,"Idle Time %":21.5,"Ready Time Achieved %":103.0,"Total Calls":3748.0,"Total Connected":1326.0,"Connected Call PPPD":165.8,"Flc connectivity%":98.4,"Slc connectivity%":1.6,"Customer is interested %":96.4,"VeryHot":87.0,"Hot":76.0,"Warm":20.0,"Normal":30.0,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D4"},{"Day":"Thursday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":69.7,"Idle Time %":30.3,"Ready Time Achieved %":102.3,"Total Calls":5418.0,"Total Connected":1878.0,"Connected Call PPPD":104.3,"Flc connectivity%":61.4,"Slc connectivity%":38.6,"Customer is interested %":94.3,"VeryHot":58.0,"Hot":85.0,"Warm":19.0,"Normal":21.0,"Total Retails":null,"MTD Target ":null,"Accurate %":48.3,"Total Audits":29.0,"Label":"Thu D5"},{"Day":"Friday","Mandays":19,"Actual Mandays":19.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":68.2,"Idle Time %":31.8,"Ready Time Achieved %":103.1,"Total Calls":7517.0,"Total Connected":2829.0,"Connected Call PPPD":148.9,"Flc connectivity%":71.2,"Slc connectivity%":28.8,"Customer is interested %":96.3,"VeryHot":70.0,"Hot":86.0,"Warm":17.0,"Normal":38.0,"Total Retails":null,"MTD Target ":null,"Accurate %":30.8,"Total Audits":65.0,"Label":"Fri D6"},{"Day":"Saturday","Mandays":20,"Actual Mandays":19.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.0,"Occupancy%":64.2,"Idle Time %":35.8,"Ready Time Achieved %":99.9,"Total Calls":7419.0,"Total Connected":2561.0,"Connected Call PPPD":134.8,"Flc connectivity%":77.5,"Slc connectivity%":22.5,"Customer is interested %":96.0,"VeryHot":87.0,"Hot":88.0,"Warm":14.0,"Normal":49.0,"Total Retails":null,"MTD Target ":null,"Accurate %":45.5,"Total Audits":77.0,"Label":"Sat D7"},{"Day":"Sunday","Mandays":20,"Actual Mandays":20.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":57.0,"Idle Time %":43.0,"Ready Time Achieved %":103.8,"Total Calls":7715.0,"Total Connected":2125.0,"Connected Call PPPD":106.2,"Flc connectivity%":69.4,"Slc connectivity%":30.6,"Customer is interested %":96.0,"VeryHot":55.0,"Hot":83.0,"Warm":14.0,"Normal":43.0,"Total Retails":null,"MTD Target ":null,"Accurate %":45.5,"Total Audits":44.0,"Label":"Sun D8"},{"Day":"Monday","Mandays":22,"Actual Mandays":22.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":65.5,"Idle Time %":34.5,"Ready Time Achieved %":96.9,"Total Calls":8237.0,"Total Connected":2788.0,"Connected Call PPPD":126.7,"Flc connectivity%":56.2,"Slc connectivity%":43.8,"Customer is interested %":96.7,"VeryHot":65.0,"Hot":67.0,"Warm":12.0,"Normal":35.0,"Total Retails":null,"MTD Target ":null,"Accurate %":30.6,"Total Audits":49.0,"Label":"Mon D9"},{"Day":"Tuesday","Mandays":21,"Actual Mandays":19.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.8,"Occupancy%":69.5,"Idle Time %":30.5,"Ready Time Achieved %":91.4,"Total Calls":6709.0,"Total Connected":2283.0,"Connected Call PPPD":120.2,"Flc connectivity%":45.0,"Slc connectivity%":55.0,"Customer is interested %":95.5,"VeryHot":52.0,"Hot":68.0,"Warm":9.0,"Normal":20.0,"Total Retails":null,"MTD Target ":null,"Accurate %":42.9,"Total Audits":42.0,"Label":"Tue D10"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":65.1,"Idle Time %":34.9,"Ready Time Achieved %":107.6,"Total Calls":4027.0,"Total Connected":1261.0,"Connected Call PPPD":157.6,"Flc connectivity%":94.6,"Slc connectivity%":5.4,"Customer is interested %":96.9,"VeryHot":43.0,"Hot":81.0,"Warm":12.0,"Normal":20.0,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D11"},{"Day":"Thursday","Mandays":20,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.0,"Occupancy%":76.8,"Idle Time %":23.2,"Ready Time Achieved %":93.8,"Total Calls":6670.0,"Total Connected":2937.0,"Connected Call PPPD":163.2,"Flc connectivity%":33.2,"Slc connectivity%":66.8,"Customer is interested %":97.5,"VeryHot":35.0,"Hot":62.0,"Warm":4.0,"Normal":15.0,"Total Retails":null,"MTD Target ":null,"Accurate %":55.6,"Total Audits":36.0,"Label":"Thu D12"},{"Day":"Friday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":74.5,"Idle Time %":25.5,"Ready Time Achieved %":92.1,"Total Calls":6361.0,"Total Connected":2610.0,"Connected Call PPPD":145.0,"Flc connectivity%":31.1,"Slc connectivity%":68.9,"Customer is interested %":93.4,"VeryHot":83.0,"Hot":67.0,"Warm":15.0,"Normal":53.0,"Total Retails":null,"MTD Target ":null,"Accurate %":42.9,"Total Audits":77.0,"Label":"Fri D13"},{"Day":"Saturday","Mandays":22,"Actual Mandays":20.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":9.1,"Occupancy%":72.9,"Idle Time %":27.1,"Ready Time Achieved %":98.0,"Total Calls":7977.0,"Total Connected":3385.0,"Connected Call PPPD":169.2,"Flc connectivity%":21.0,"Slc connectivity%":79.0,"Customer is interested %":93.3,"VeryHot":81.0,"Hot":83.0,"Warm":10.0,"Normal":44.0,"Total Retails":null,"MTD Target ":null,"Accurate %":56.8,"Total Audits":81.0,"Label":"Sat D14"},{"Day":"Sunday","Mandays":22,"Actual Mandays":20.0,"Planned Leaves":1,"Unplanned":1,"Leaves %":9.1,"Occupancy%":67.3,"Idle Time %":32.7,"Ready Time Achieved %":91.6,"Total Calls":7170.0,"Total Connected":2824.0,"Connected Call PPPD":141.2,"Flc connectivity%":20.9,"Slc connectivity%":79.1,"Customer is interested %":95.3,"VeryHot":55.0,"Hot":67.0,"Warm":12.0,"Normal":35.0,"Total Retails":null,"MTD Target ":null,"Accurate %":40.7,"Total Audits":91.0,"Label":"Sun D15"},{"Day":"Monday","Mandays":20,"Actual Mandays":18.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":10.0,"Occupancy%":80.3,"Idle Time %":19.7,"Ready Time Achieved %":96.6,"Total Calls":7442.0,"Total Connected":3090.0,"Connected Call PPPD":171.7,"Flc connectivity%":25.4,"Slc connectivity%":74.6,"Customer is interested %":97.0,"VeryHot":54.0,"Hot":42.0,"Warm":7.0,"Normal":28.0,"Total Retails":null,"MTD Target ":null,"Accurate %":40.8,"Total Audits":76.0,"Label":"Mon D16"},{"Day":"Tuesday","Mandays":3,"Actual Mandays":3.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":75.9,"Idle Time %":24.1,"Ready Time Achieved %":109.3,"Total Calls":1092.0,"Total Connected":362.0,"Connected Call PPPD":120.7,"Flc connectivity%":98.9,"Slc connectivity%":1.1,"Customer is interested %":100.0,"VeryHot":6.0,"Hot":67.0,"Warm":3.0,"Normal":2.0,"Total Retails":null,"MTD Target ":null,"Accurate %":50.0,"Total Audits":12.0,"Label":"Tue D17"},{"Day":"Thursday","Mandays":20,"Actual Mandays":15.0,"Planned Leaves":5,"Unplanned":0,"Leaves %":25.0,"Occupancy%":77.3,"Idle Time %":22.7,"Ready Time Achieved %":97.6,"Total Calls":5103.0,"Total Connected":2130.0,"Connected Call PPPD":142.0,"Flc connectivity%":64.1,"Slc connectivity%":35.9,"Customer is interested %":94.6,"VeryHot":22.0,"Hot":47.0,"Warm":8.0,"Normal":13.0,"Total Retails":null,"MTD Target ":null,"Accurate %":46.7,"Total Audits":30.0,"Label":"Thu D19"},{"Day":"Friday","Mandays":21,"Actual Mandays":18.0,"Planned Leaves":3,"Unplanned":0,"Leaves %":14.3,"Occupancy%":75.3,"Idle Time %":24.7,"Ready Time Achieved %":100.0,"Total Calls":6967.0,"Total Connected":2571.0,"Connected Call PPPD":142.8,"Flc connectivity%":37.0,"Slc connectivity%":63.0,"Customer is interested %":96.9,"VeryHot":94.0,"Hot":67.0,"Warm":16.0,"Normal":41.0,"Total Retails":null,"MTD Target ":null,"Accurate %":48.6,"Total Audits":70.0,"Label":"Fri D20"},{"Day":"Saturday","Mandays":23,"Actual Mandays":22.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.3,"Occupancy%":74.6,"Idle Time %":25.4,"Ready Time Achieved %":90.3,"Total Calls":7650.0,"Total Connected":2980.0,"Connected Call PPPD":135.5,"Flc connectivity%":26.3,"Slc connectivity%":73.7,"Customer is interested %":96.3,"VeryHot":64.0,"Hot":54.0,"Warm":10.0,"Normal":30.0,"Total Retails":null,"MTD Target ":null,"Accurate %":31.8,"Total Audits":22.0,"Label":"Sat D21"},{"Day":"Sunday","Mandays":23,"Actual Mandays":22.0,"Planned Leaves":0,"Unplanned":1,"Leaves %":4.3,"Occupancy%":77.7,"Idle Time %":22.3,"Ready Time Achieved %":97.2,"Total Calls":10095.0,"Total Connected":3861.0,"Connected Call PPPD":175.5,"Flc connectivity%":13.2,"Slc connectivity%":86.8,"Customer is interested %":98.2,"VeryHot":73.0,"Hot":81.0,"Warm":15.0,"Normal":45.0,"Total Retails":null,"MTD Target ":null,"Accurate %":28.7,"Total Audits":80.0,"Label":"Sun D22"},{"Day":"Monday","Mandays":23,"Actual Mandays":22.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.3,"Occupancy%":71.8,"Idle Time %":28.2,"Ready Time Achieved %":102.8,"Total Calls":8209.0,"Total Connected":3331.0,"Connected Call PPPD":151.4,"Flc connectivity%":48.6,"Slc connectivity%":51.4,"Customer is interested %":96.1,"VeryHot":102.0,"Hot":79.0,"Warm":17.0,"Normal":50.0,"Total Retails":null,"MTD Target ":null,"Accurate %":52.8,"Total Audits":72.0,"Label":"Mon D23"},{"Day":"Tuesday","Mandays":23,"Actual Mandays":22.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.3,"Occupancy%":68.3,"Idle Time %":31.7,"Ready Time Achieved %":110.4,"Total Calls":8276.0,"Total Connected":2843.0,"Connected Call PPPD":129.2,"Flc connectivity%":39.7,"Slc connectivity%":60.3,"Customer is interested %":98.1,"VeryHot":106.0,"Hot":115.0,"Warm":14.0,"Normal":26.0,"Total Retails":null,"MTD Target ":null,"Accurate %":41.9,"Total Audits":43.0,"Label":"Tue D24"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":71.5,"Idle Time %":28.5,"Ready Time Achieved %":166.9,"Total Calls":4596.0,"Total Connected":1725.0,"Connected Call PPPD":215.6,"Flc connectivity%":48.7,"Slc connectivity%":51.3,"Customer is interested %":98.8,"VeryHot":52.0,"Hot":70.0,"Warm":9.0,"Normal":28.0,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D25"},{"Day":"Friday","Mandays":20,"Actual Mandays":19.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.0,"Occupancy%":76.3,"Idle Time %":23.7,"Ready Time Achieved %":102.6,"Total Calls":6579.0,"Total Connected":2645.0,"Connected Call PPPD":139.2,"Flc connectivity%":74.0,"Slc connectivity%":26.0,"Customer is interested %":98.8,"VeryHot":80.0,"Hot":93.0,"Warm":26.0,"Normal":40.0,"Total Retails":null,"MTD Target ":null,"Accurate %":61.2,"Total Audits":85.0,"Label":"Fri D27"},{"Day":"Saturday","Mandays":22,"Actual Mandays":21.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.5,"Occupancy%":76.6,"Idle Time %":23.4,"Ready Time Achieved %":105.9,"Total Calls":9878.0,"Total Connected":3737.0,"Connected Call PPPD":178.0,"Flc connectivity%":30.1,"Slc connectivity%":69.9,"Customer is interested %":97.8,"VeryHot":116.0,"Hot":80.0,"Warm":21.0,"Normal":50.0,"Total Retails":null,"MTD Target ":null,"Accurate %":45.5,"Total Audits":55.0,"Label":"Sat D28"},{"Day":"Sunday","Mandays":22,"Actual Mandays":20.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":9.1,"Occupancy%":79.6,"Idle Time %":20.4,"Ready Time Achieved %":101.6,"Total Calls":8089.0,"Total Connected":3253.0,"Connected Call PPPD":162.6,"Flc connectivity%":39.9,"Slc connectivity%":60.1,"Customer is interested %":97.3,"VeryHot":130.0,"Hot":139.0,"Warm":26.0,"Normal":62.0,"Total Retails":null,"MTD Target ":null,"Accurate %":62.8,"Total Audits":78.0,"Label":"Sun D29"},{"Day":"Monday","Mandays":21,"Actual Mandays":20.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":4.8,"Occupancy%":73.3,"Idle Time %":26.7,"Ready Time Achieved %":100.5,"Total Calls":10422.0,"Total Connected":3041.0,"Connected Call PPPD":152.0,"Flc connectivity%":37.2,"Slc connectivity%":62.8,"Customer is interested %":97.4,"VeryHot":116.0,"Hot":161.0,"Warm":22.0,"Normal":71.0,"Total Retails":null,"MTD Target ":null,"Accurate %":57.0,"Total Audits":86.0,"Label":"Mon D30"},{"Day":"Tuesday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":69.2,"Idle Time %":30.8,"Ready Time Achieved %":109.5,"Total Calls":5129.0,"Total Connected":1529.0,"Connected Call PPPD":84.9,"Flc connectivity%":91.0,"Slc connectivity%":9.0,"Customer is interested %":97.5,"VeryHot":113.0,"Hot":126.0,"Warm":24.0,"Normal":52.0,"Total Retails":null,"MTD Target ":null,"Accurate %":43.5,"Total Audits":23.0,"Label":"Tue D31"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":73.3,"Idle Time %":26.7,"Ready Time Achieved %":100.6,"Total Calls":5775.0,"Total Connected":1546.0,"Connected Call PPPD":193.2,"Flc connectivity%":0.0,"Slc connectivity%":100.0,"Customer is interested %":99.1,"VeryHot":109.0,"Hot":135.0,"Warm":23.0,"Normal":66.0,"Total Retails":39.0,"MTD Target ":28.0,"Accurate %":null,"Total Audits":null,"Label":"Wed D1"},{"Day":"Thursday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":0,"Unplanned":1,"Leaves %":5.3,"Occupancy%":78.6,"Idle Time %":21.4,"Ready Time Achieved %":101.7,"Total Calls":7001.0,"Total Connected":2480.0,"Connected Call PPPD":137.8,"Flc connectivity%":76.7,"Slc connectivity%":23.3,"Customer is interested %":97.7,"VeryHot":76.0,"Hot":119.0,"Warm":12.0,"Normal":50.0,"Total Retails":50.0,"MTD Target ":28.0,"Accurate %":30.0,"Total Audits":40.0,"Label":"Thu D2"},{"Day":"Friday","Mandays":20,"Actual Mandays":19.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.0,"Occupancy%":72.8,"Idle Time %":27.2,"Ready Time Achieved %":93.7,"Total Calls":7361.0,"Total Connected":2494.0,"Connected Call PPPD":131.3,"Flc connectivity%":62.8,"Slc connectivity%":37.2,"Customer is interested %":98.7,"VeryHot":110.0,"Hot":120.0,"Warm":20.0,"Normal":54.0,"Total Retails":39.0,"MTD Target ":32.0,"Accurate %":22.9,"Total Audits":35.0,"Label":"Fri D3"},{"Day":"Saturday","Mandays":17,"Actual Mandays":16.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":71.6,"Idle Time %":28.4,"Ready Time Achieved %":97.9,"Total Calls":6142.0,"Total Connected":2138.0,"Connected Call PPPD":133.6,"Flc connectivity%":68.1,"Slc connectivity%":31.9,"Customer is interested %":97.3,"VeryHot":93.0,"Hot":121.0,"Warm":21.0,"Normal":58.0,"Total Retails":52.0,"MTD Target ":23.0,"Accurate %":22.9,"Total Audits":35.0,"Label":"Sat D4"},{"Day":"Sunday","Mandays":19,"Actual Mandays":19.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":63.7,"Idle Time %":36.3,"Ready Time Achieved %":103.2,"Total Calls":8645.0,"Total Connected":2713.0,"Connected Call PPPD":142.8,"Flc connectivity%":40.6,"Slc connectivity%":59.4,"Customer is interested %":97.0,"VeryHot":76.0,"Hot":102.0,"Warm":12.0,"Normal":37.0,"Total Retails":40.0,"MTD Target ":40.0,"Accurate %":20.0,"Total Audits":35.0,"Label":"Sun D5"},{"Day":"Monday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":76.1,"Idle Time %":23.9,"Ready Time Achieved %":101.8,"Total Calls":8121.0,"Total Connected":2981.0,"Connected Call PPPD":165.6,"Flc connectivity%":35.1,"Slc connectivity%":64.9,"Customer is interested %":99.1,"VeryHot":72.0,"Hot":122.0,"Warm":8.0,"Normal":29.0,"Total Retails":73.0,"MTD Target ":26.0,"Accurate %":45.3,"Total Audits":75.0,"Label":"Mon D6"},{"Day":"Tuesday","Mandays":19,"Actual Mandays":19.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":75.9,"Idle Time %":24.1,"Ready Time Achieved %":96.1,"Total Calls":7063.0,"Total Connected":2501.0,"Connected Call PPPD":131.6,"Flc connectivity%":27.9,"Slc connectivity%":72.1,"Customer is interested %":99.2,"VeryHot":66.0,"Hot":130.0,"Warm":13.0,"Normal":40.0,"Total Retails":32.0,"MTD Target ":31.0,"Accurate %":50.8,"Total Audits":63.0,"Label":"Tue D7"},{"Day":"Wednesday","Mandays":10,"Actual Mandays":10.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":72.3,"Idle Time %":27.7,"Ready Time Achieved %":91.5,"Total Calls":3831.0,"Total Connected":1760.0,"Connected Call PPPD":176.0,"Flc connectivity%":0.0,"Slc connectivity%":100.0,"Customer is interested %":98.3,"VeryHot":52.0,"Hot":118.0,"Warm":16.0,"Normal":41.0,"Total Retails":26.0,"MTD Target ":34.0,"Accurate %":null,"Total Audits":null,"Label":"Wed D8"},{"Day":"Thursday","Mandays":17,"Actual Mandays":15.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":78.6,"Idle Time %":21.4,"Ready Time Achieved %":91.3,"Total Calls":6037.0,"Total Connected":2087.0,"Connected Call PPPD":139.1,"Flc connectivity%":52.2,"Slc connectivity%":47.8,"Customer is interested %":93.5,"VeryHot":112.0,"Hot":86.0,"Warm":23.0,"Normal":71.0,"Total Retails":60.0,"MTD Target ":29.0,"Accurate %":53.3,"Total Audits":15.0,"Label":"Thu D9"},{"Day":"Friday","Mandays":17,"Actual Mandays":16.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":77.2,"Idle Time %":22.8,"Ready Time Achieved %":102.7,"Total Calls":6020.0,"Total Connected":2282.0,"Connected Call PPPD":142.6,"Flc connectivity%":56.0,"Slc connectivity%":44.0,"Customer is interested %":95.0,"VeryHot":99.0,"Hot":108.0,"Warm":32.0,"Normal":72.0,"Total Retails":46.0,"MTD Target ":30.0,"Accurate %":43.5,"Total Audits":85.0,"Label":"Fri D10"},{"Day":"Saturday","Mandays":15,"Actual Mandays":11.0,"Planned Leaves":1,"Unplanned":3,"Leaves %":26.7,"Occupancy%":80.2,"Idle Time %":19.8,"Ready Time Achieved %":99.5,"Total Calls":4157.0,"Total Connected":1321.0,"Connected Call PPPD":120.1,"Flc connectivity%":85.6,"Slc connectivity%":14.4,"Customer is interested %":95.8,"VeryHot":95.0,"Hot":128.0,"Warm":21.0,"Normal":83.0,"Total Retails":46.0,"MTD Target ":31.0,"Accurate %":38.2,"Total Audits":55.0,"Label":"Sat D11"},{"Day":"Sunday","Mandays":19,"Actual Mandays":17.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":10.5,"Occupancy%":78.8,"Idle Time %":21.2,"Ready Time Achieved %":95.7,"Total Calls":8193.0,"Total Connected":2555.0,"Connected Call PPPD":150.3,"Flc connectivity%":33.5,"Slc connectivity%":66.5,"Customer is interested %":93.8,"VeryHot":125.0,"Hot":115.0,"Warm":18.0,"Normal":50.0,"Total Retails":34.0,"MTD Target ":44.0,"Accurate %":45.7,"Total Audits":70.0,"Label":"Sun D12"},{"Day":"Monday","Mandays":17,"Actual Mandays":16.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":79.2,"Idle Time %":20.8,"Ready Time Achieved %":102.4,"Total Calls":8514.0,"Total Connected":2421.0,"Connected Call PPPD":151.3,"Flc connectivity%":35.5,"Slc connectivity%":64.5,"Customer is interested %":96.1,"VeryHot":107.0,"Hot":81.0,"Warm":18.0,"Normal":70.0,"Total Retails":43.0,"MTD Target ":27.0,"Accurate %":46.0,"Total Audits":63.0,"Label":"Mon D13"},{"Day":"Tuesday","Mandays":19,"Actual Mandays":18.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.3,"Occupancy%":82.0,"Idle Time %":18.0,"Ready Time Achieved %":99.7,"Total Calls":8630.0,"Total Connected":2893.0,"Connected Call PPPD":160.7,"Flc connectivity%":26.1,"Slc connectivity%":73.9,"Customer is interested %":96.6,"VeryHot":111.0,"Hot":105.0,"Warm":11.0,"Normal":66.0,"Total Retails":42.0,"MTD Target ":37.0,"Accurate %":77.8,"Total Audits":18.0,"Label":"Tue D14"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":79.3,"Idle Time %":20.7,"Ready Time Achieved %":103.0,"Total Calls":3248.0,"Total Connected":1104.0,"Connected Call PPPD":138.0,"Flc connectivity%":99.4,"Slc connectivity%":0.6,"Customer is interested %":96.4,"VeryHot":110.0,"Hot":110.0,"Warm":23.0,"Normal":56.0,"Total Retails":51.0,"MTD Target ":36.0,"Accurate %":null,"Total Audits":null,"Label":"Wed D15"},{"Day":"Thursday","Mandays":17,"Actual Mandays":14.0,"Planned Leaves":2,"Unplanned":1,"Leaves %":17.6,"Occupancy%":79.4,"Idle Time %":20.6,"Ready Time Achieved %":101.5,"Total Calls":7632.0,"Total Connected":2334.0,"Connected Call PPPD":166.7,"Flc connectivity%":38.9,"Slc connectivity%":61.1,"Customer is interested %":97.7,"VeryHot":45.0,"Hot":102.0,"Warm":8.0,"Normal":14.0,"Total Retails":63.0,"MTD Target ":37.0,"Accurate %":27.6,"Total Audits":29.0,"Label":"Thu D16"},{"Day":"Friday","Mandays":18,"Actual Mandays":15.0,"Planned Leaves":3,"Unplanned":0,"Leaves %":16.7,"Occupancy%":72.9,"Idle Time %":27.1,"Ready Time Achieved %":106.4,"Total Calls":6143.0,"Total Connected":1888.0,"Connected Call PPPD":125.9,"Flc connectivity%":50.7,"Slc connectivity%":49.3,"Customer is interested %":98.9,"VeryHot":95.0,"Hot":117.0,"Warm":15.0,"Normal":38.0,"Total Retails":43.0,"MTD Target ":42.0,"Accurate %":54.7,"Total Audits":64.0,"Label":"Fri D17"},{"Day":"Saturday","Mandays":18,"Actual Mandays":13.0,"Planned Leaves":5,"Unplanned":0,"Leaves %":27.8,"Occupancy%":80.0,"Idle Time %":20.0,"Ready Time Achieved %":107.6,"Total Calls":3493.0,"Total Connected":1107.0,"Connected Call PPPD":85.2,"Flc connectivity%":99.9,"Slc connectivity%":0.1,"Customer is interested %":98.8,"VeryHot":44.0,"Hot":88.0,"Warm":13.0,"Normal":26.0,"Total Retails":45.0,"MTD Target ":26.0,"Accurate %":67.6,"Total Audits":34.0,"Label":"Sat D18"},{"Day":"Sunday","Mandays":17,"Actual Mandays":15.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":11.8,"Occupancy%":74.7,"Idle Time %":25.3,"Ready Time Achieved %":93.3,"Total Calls":6219.0,"Total Connected":2220.0,"Connected Call PPPD":148.0,"Flc connectivity%":38.9,"Slc connectivity%":61.1,"Customer is interested %":99.6,"VeryHot":79.0,"Hot":129.0,"Warm":14.0,"Normal":34.0,"Total Retails":57.0,"MTD Target ":34.0,"Accurate %":62.5,"Total Audits":24.0,"Label":"Sun D19"},{"Day":"Monday","Mandays":17,"Actual Mandays":16.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":78.1,"Idle Time %":21.9,"Ready Time Achieved %":100.2,"Total Calls":8353.0,"Total Connected":2606.0,"Connected Call PPPD":162.9,"Flc connectivity%":35.1,"Slc connectivity%":64.9,"Customer is interested %":98.8,"VeryHot":78.0,"Hot":125.0,"Warm":10.0,"Normal":41.0,"Total Retails":56.0,"MTD Target ":29.0,"Accurate %":46.8,"Total Audits":47.0,"Label":"Mon D20"},{"Day":"Tuesday","Mandays":18,"Actual Mandays":17.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.6,"Occupancy%":74.0,"Idle Time %":26.0,"Ready Time Achieved %":103.5,"Total Calls":6427.0,"Total Connected":2250.0,"Connected Call PPPD":132.4,"Flc connectivity%":40.6,"Slc connectivity%":59.4,"Customer is interested %":100.0,"VeryHot":48.0,"Hot":119.0,"Warm":13.0,"Normal":31.0,"Total Retails":39.0,"MTD Target ":30.0,"Accurate %":64.7,"Total Audits":34.0,"Label":"Tue D21"},{"Day":"Wednesday","Mandays":10,"Actual Mandays":10.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":62.5,"Idle Time %":37.5,"Ready Time Achieved %":114.4,"Total Calls":1207.0,"Total Connected":419.0,"Connected Call PPPD":41.9,"Flc connectivity%":74.7,"Slc connectivity%":25.3,"Customer is interested %":97.8,"VeryHot":21.0,"Hot":50.0,"Warm":3.0,"Normal":18.0,"Total Retails":28.0,"MTD Target ":29.0,"Accurate %":null,"Total Audits":null,"Label":"Wed D22"},{"Day":"Thursday","Mandays":15,"Actual Mandays":15.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":71.9,"Idle Time %":28.1,"Ready Time Achieved %":104.5,"Total Calls":6817.0,"Total Connected":2671.0,"Connected Call PPPD":178.1,"Flc connectivity%":10.9,"Slc connectivity%":89.1,"Customer is interested %":100.0,"VeryHot":16.0,"Hot":78.0,"Warm":null,"Normal":null,"Total Retails":62.0,"MTD Target ":33.0,"Accurate %":53.6,"Total Audits":84.0,"Label":"Thu D23"},{"Day":"Friday","Mandays":16,"Actual Mandays":15.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":76.7,"Idle Time %":23.3,"Ready Time Achieved %":95.3,"Total Calls":5646.0,"Total Connected":1661.0,"Connected Call PPPD":110.7,"Flc connectivity%":79.2,"Slc connectivity%":20.8,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":45.0,"MTD Target ":39.0,"Accurate %":58.0,"Total Audits":81.0,"Label":"Fri D24"},{"Day":"Saturday","Mandays":16,"Actual Mandays":14.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.2,"Occupancy%":79.4,"Idle Time %":20.6,"Ready Time Achieved %":93.7,"Total Calls":5644.0,"Total Connected":1735.0,"Connected Call PPPD":123.9,"Flc connectivity%":59.6,"Slc connectivity%":40.4,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":45.0,"MTD Target ":23.0,"Accurate %":60.6,"Total Audits":66.0,"Label":"Sat D25"},{"Day":"Sunday","Mandays":14,"Actual Mandays":12.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":14.3,"Occupancy%":78.9,"Idle Time %":21.1,"Ready Time Achieved %":99.9,"Total Calls":3865.0,"Total Connected":1318.0,"Connected Call PPPD":109.8,"Flc connectivity%":90.7,"Slc connectivity%":9.3,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":50.0,"MTD Target ":38.0,"Accurate %":69.9,"Total Audits":73.0,"Label":"Sun D26"},{"Day":"Monday","Mandays":18,"Actual Mandays":15.0,"Planned Leaves":2,"Unplanned":1,"Leaves %":16.7,"Occupancy%":77.2,"Idle Time %":22.8,"Ready Time Achieved %":100.8,"Total Calls":7296.0,"Total Connected":2336.0,"Connected Call PPPD":155.7,"Flc connectivity%":50.2,"Slc connectivity%":49.8,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":56.0,"MTD Target ":32.0,"Accurate %":60.5,"Total Audits":76.0,"Label":"Mon D27"},{"Day":"Tuesday","Mandays":18,"Actual Mandays":15.0,"Planned Leaves":3,"Unplanned":0,"Leaves %":16.7,"Occupancy%":81.6,"Idle Time %":18.4,"Ready Time Achieved %":104.8,"Total Calls":5612.0,"Total Connected":1861.0,"Connected Call PPPD":124.1,"Flc connectivity%":66.6,"Slc connectivity%":33.4,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":61.0,"MTD Target ":33.0,"Accurate %":63.3,"Total Audits":30.0,"Label":"Tue D28"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":77.2,"Idle Time %":22.8,"Ready Time Achieved %":88.9,"Total Calls":3794.0,"Total Connected":957.0,"Connected Call PPPD":119.6,"Flc connectivity%":98.5,"Slc connectivity%":1.5,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":20.0,"MTD Target ":24.0,"Accurate %":null,"Total Audits":null,"Label":"Wed D28b"},{"Day":"Thursday","Mandays":16,"Actual Mandays":13.0,"Planned Leaves":3,"Unplanned":0,"Leaves %":18.8,"Occupancy%":71.1,"Idle Time %":28.9,"Ready Time Achieved %":100.5,"Total Calls":8264.0,"Total Connected":1698.0,"Connected Call PPPD":130.6,"Flc connectivity%":55.8,"Slc connectivity%":44.2,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":1.0,"MTD Target ":26.0,"Accurate %":70.5,"Total Audits":105.0,"Label":"Thu D1"},{"Day":"Saturday","Mandays":16,"Actual Mandays":15.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.2,"Occupancy%":82.6,"Idle Time %":17.4,"Ready Time Achieved %":93.0,"Total Calls":5524.0,"Total Connected":1955.0,"Connected Call PPPD":130.3,"Flc connectivity%":76.7,"Slc connectivity%":23.3,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":70.0,"Total Audits":80.0,"Label":"Sat D3"},{"Day":"Sunday","Mandays":16,"Actual Mandays":15.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.2,"Occupancy%":77.9,"Idle Time %":22.1,"Ready Time Achieved %":95.6,"Total Calls":7409.0,"Total Connected":2225.0,"Connected Call PPPD":148.3,"Flc connectivity%":33.4,"Slc connectivity%":66.6,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":50.0,"Total Audits":54.0,"Label":"Sun D4"},{"Day":"Monday","Mandays":17,"Actual Mandays":16.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.9,"Occupancy%":75.7,"Idle Time %":24.3,"Ready Time Achieved %":109.0,"Total Calls":7130.0,"Total Connected":2127.0,"Connected Call PPPD":132.9,"Flc connectivity%":47.9,"Slc connectivity%":52.1,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":46.2,"Total Audits":39.0,"Label":"Mon D5"},{"Day":"Tuesday","Mandays":18,"Actual Mandays":17.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.6,"Occupancy%":72.4,"Idle Time %":27.6,"Ready Time Achieved %":95.7,"Total Calls":7428.0,"Total Connected":1725.0,"Connected Call PPPD":101.5,"Flc connectivity%":45.8,"Slc connectivity%":54.2,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":31.2,"Total Audits":16.0,"Label":"Tue D6"},{"Day":"Wednesday","Mandays":7,"Actual Mandays":7.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":82.3,"Idle Time %":17.7,"Ready Time Achieved %":97.2,"Total Calls":2902.0,"Total Connected":920.0,"Connected Call PPPD":131.4,"Flc connectivity%":100.0,"Slc connectivity%":0.0,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D7"},{"Day":"Thursday","Mandays":16,"Actual Mandays":15.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.2,"Occupancy%":76.7,"Idle Time %":23.3,"Ready Time Achieved %":99.6,"Total Calls":7228.0,"Total Connected":2383.0,"Connected Call PPPD":158.9,"Flc connectivity%":31.3,"Slc connectivity%":68.7,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":46.7,"Total Audits":60.0,"Label":"Thu D8"},{"Day":"Friday","Mandays":18,"Actual Mandays":17.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":5.6,"Occupancy%":78.2,"Idle Time %":21.8,"Ready Time Achieved %":102.5,"Total Calls":8480.0,"Total Connected":2997.0,"Connected Call PPPD":176.3,"Flc connectivity%":21.6,"Slc connectivity%":78.4,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":53.2,"Total Audits":79.0,"Label":"Fri D9"},{"Day":"Saturday","Mandays":15,"Actual Mandays":15.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":78.5,"Idle Time %":21.5,"Ready Time Achieved %":98.1,"Total Calls":6324.0,"Total Connected":2191.0,"Connected Call PPPD":146.1,"Flc connectivity%":48.3,"Slc connectivity%":51.7,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":68.8,"Total Audits":77.0,"Label":"Sat D10"},{"Day":"Sunday","Mandays":16,"Actual Mandays":15.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.2,"Occupancy%":75.1,"Idle Time %":24.9,"Ready Time Achieved %":100.4,"Total Calls":7783.0,"Total Connected":2329.0,"Connected Call PPPD":155.3,"Flc connectivity%":29.7,"Slc connectivity%":70.3,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":40.0,"Total Audits":30.0,"Label":"Sun D11"},{"Day":"Monday","Mandays":15,"Actual Mandays":14.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.7,"Occupancy%":76.5,"Idle Time %":23.5,"Ready Time Achieved %":93.5,"Total Calls":6258.0,"Total Connected":2089.0,"Connected Call PPPD":149.2,"Flc connectivity%":49.0,"Slc connectivity%":51.0,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":49.3,"Total Audits":75.0,"Label":"Mon D12"},{"Day":"Tuesday","Mandays":16,"Actual Mandays":16.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":78.6,"Idle Time %":21.4,"Ready Time Achieved %":103.1,"Total Calls":7224.0,"Total Connected":2372.0,"Connected Call PPPD":148.2,"Flc connectivity%":20.0,"Slc connectivity%":80.0,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":74.5,"Total Audits":47.0,"Label":"Tue D13"},{"Day":"Wednesday","Mandays":8,"Actual Mandays":8.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":78.4,"Idle Time %":21.6,"Ready Time Achieved %":135.4,"Total Calls":4862.0,"Total Connected":1650.0,"Connected Call PPPD":206.2,"Flc connectivity%":61.0,"Slc connectivity%":39.0,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D14"},{"Day":"Thursday","Mandays":14,"Actual Mandays":13.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":7.1,"Occupancy%":80.4,"Idle Time %":19.6,"Ready Time Achieved %":114.2,"Total Calls":6484.0,"Total Connected":2233.0,"Connected Call PPPD":171.8,"Flc connectivity%":33.2,"Slc connectivity%":66.8,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":52.2,"Total Audits":67.0,"Label":"Thu D15"},{"Day":"Friday","Mandays":14,"Actual Mandays":14.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":77.3,"Idle Time %":22.7,"Ready Time Achieved %":97.6,"Total Calls":5973.0,"Total Connected":2097.0,"Connected Call PPPD":149.8,"Flc connectivity%":48.7,"Slc connectivity%":51.3,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":46.2,"Total Audits":80.0,"Label":"Fri D16"},{"Day":"Saturday","Mandays":15,"Actual Mandays":14.0,"Planned Leaves":1,"Unplanned":0,"Leaves %":6.7,"Occupancy%":81.0,"Idle Time %":19.0,"Ready Time Achieved %":98.8,"Total Calls":8453.0,"Total Connected":2482.0,"Connected Call PPPD":177.3,"Flc connectivity%":25.2,"Slc connectivity%":74.8,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":56.4,"Total Audits":78.0,"Label":"Sat D17"},{"Day":"Monday","Mandays":15,"Actual Mandays":13.0,"Planned Leaves":2,"Unplanned":0,"Leaves %":13.3,"Occupancy%":79.5,"Idle Time %":20.5,"Ready Time Achieved %":91.7,"Total Calls":5128.0,"Total Connected":1627.0,"Connected Call PPPD":125.2,"Flc connectivity%":73.6,"Slc connectivity%":26.4,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":48.2,"Total Audits":56.0,"Label":"Mon D19"},{"Day":"Wednesday","Mandays":6,"Actual Mandays":6.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":76.8,"Idle Time %":23.2,"Ready Time Achieved %":134.8,"Total Calls":2734.0,"Total Connected":1036.0,"Connected Call PPPD":172.7,"Flc connectivity%":99.4,"Slc connectivity%":0.6,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":null,"Total Audits":null,"Label":"Wed D21"},{"Day":"Thursday","Mandays":15,"Actual Mandays":15.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":77.7,"Idle Time %":22.3,"Ready Time Achieved %":97.9,"Total Calls":5029.0,"Total Connected":2011.0,"Connected Call PPPD":134.1,"Flc connectivity%":84.1,"Slc connectivity%":15.9,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":55.6,"Total Audits":54.0,"Label":"Thu D22"},{"Day":"Friday","Mandays":14,"Actual Mandays":14.0,"Planned Leaves":0,"Unplanned":0,"Leaves %":0.0,"Occupancy%":null,"Idle Time %":null,"Ready Time Achieved %":0.0,"Total Calls":6065.0,"Total Connected":2201.0,"Connected Call PPPD":157.2,"Flc connectivity%":47.3,"Slc connectivity%":52.7,"Customer is interested %":null,"VeryHot":null,"Hot":null,"Warm":null,"Normal":null,"Total Retails":null,"MTD Target ":null,"Accurate %":49.3,"Total Audits":73.0,"Label":"Fri D23"}];
+
+// Assign real dates from Label pattern (e.g. "Mon D2" = 2nd of month)
+(function assignDates() {
+  let month = 0, prevD = 0;
+  RAW.forEach(r => {
+    const m = r.Label && r.Label.match(/D(\d+)/);
+    if (m) {
+      const d = parseInt(m[1]);
+      if (d < prevD && prevD > 15) month++;
+      prevD = d;
+      r._date = new Date(2026, month, d);
+    }
+  });
+})();
+
+// Helper: format date as DD
+function fmtDD(d) { return d ? String(d.getDate()).padStart(2,'0') : ''; }
+
+// Only working days
+const BASE_DATA = RAW.filter(d => d['Total Calls'] > 0 && d['Occupancy%']);
+const BASE_RETAIL = RAW.filter(d => d['Total Retails'] != null);
+
+// Active dataset (may be overridden by GSheet fetch)
+let LIVE_DATA = BASE_DATA.slice();
+let LIVE_RETAIL = BASE_RETAIL.slice();
+
+// Filtered views (after slice + date range applied)
+let DATA = LIVE_DATA.slice();
+let RETAIL_DATA = LIVE_RETAIL.slice();
+
+const C = {
+  green: '#00e5a0', blue: '#4f8ef7', orange: '#f7a94f', red: '#f74f7a',
+  purple: '#b47ef7', teal: '#4fdff7', bg: '#1c2030', border: '#252a38',
+  text: '#e8ecf4', muted: '#6b7590'
+};
+
+Chart.defaults.color = C.muted;
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.display = false;
+
+// ── Chart registry (destroy before redraw) ───────────────────
+const CHARTS = {};
+let labelsEnabled = false;
+function toggleLabels() {
+  labelsEnabled = !labelsEnabled;
+  const btn = document.getElementById('sbtn-labels');
+  if(btn) btn.classList.toggle('active', labelsEnabled);
+  if(typeof rebuildAll === 'function') rebuildAll();
+}
+
+function mkChart(id, config) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (CHARTS[id]) { try { CHARTS[id].destroy(); } catch(e){} }
+  
+  if (!config.options) config.options = {};
+  if (!config.options.plugins) config.options.plugins = {};
+  config.options.plugins.datalabels = {
+    display: labelsEnabled ? 'auto' : false,
+    color: '#e8ecf4',
+    align: 'top',
+    anchor: 'end',
+    font: { size: 9, family: 'Space Mono' },
+    formatter: (value) => {
+      if(value === null || value === 0) return '';
+      return (typeof value === 'number' && !Number.isInteger(value)) ? value.toFixed(1) : value;
+    }
+  };
+  
+  CHARTS[id] = new Chart(ctx, config);
+  return CHARTS[id];
+}
+function tab(arr, key) { return arr.map(d => d[key] ?? null); }
+
+// ══════════════════════════════════════════════════════════════
+//  DATE SLICING
+// ══════════════════════════════════════════════════════════════
+let currentSlice = 'all';
+let rangeFrom = null, rangeTo = null;
+
+function setSlice(s) {
+  currentSlice = s;
+  ['all','daily','weekly','monthly'].forEach(k => {
+    document.getElementById('sbtn-'+k).classList.toggle('active', k === s);
+  });
+  applyFilters();
+}
+
+function applyDateRange() {
+  const fEl = document.getElementById('dateFrom');
+  const tEl = document.getElementById('dateTo');
+  const f = fEl.value;
+  const t = tEl.value;
+  if (!f && !t) return; // prevent blank filter
+  rangeFrom = f ? new Date(f + 'T00:00:00') : null;
+  rangeTo   = t ? new Date(t + 'T23:59:59') : null;
+  // Keep the values visible in the inputs
+  fEl.setAttribute('value', f);
+  tEl.setAttribute('value', t);
+  applyFilters();
+}
+
+function clearDateRange() {
+  rangeFrom = rangeTo = null;
+  const fEl = document.getElementById('dateFrom');
+  const tEl = document.getElementById('dateTo');
+  fEl.value = '';
+  tEl.value = '';
+  fEl.removeAttribute('value');
+  tEl.removeAttribute('value');
+  applyFilters();
+}
+
+function applyFilters() {
+  let base = LIVE_DATA.slice();
+  let baseR = LIVE_RETAIL.slice();
+
+  // ── Date range using _date property ─────────────────────────
+  if (rangeFrom || rangeTo) {
+    const gsDateCol = (window.gsConfig && window.gsConfig.dateCol) || '';
+    base = base.filter(d => {
+      const v = gsDateCol ? new Date(d[gsDateCol]) : d._date;
+      if (!v || isNaN(v)) return true;
+      return (!rangeFrom || v >= rangeFrom) && (!rangeTo || v <= rangeTo);
+    });
+    baseR = baseR.filter(d => {
+      const v = gsDateCol ? new Date(d[gsDateCol]) : d._date;
+      if (!v || isNaN(v)) return true;
+      return (!rangeFrom || v >= rangeFrom) && (!rangeTo || v <= rangeTo);
+    });
+  }
+
+  // ── Generate display labels (DD format) ─────────────────────
+  base.forEach(d => {
+    if (d._date) d._displayLabel = fmtDD(d._date);
+    else d._displayLabel = d.Label || d.Day || '';
+  });
+
+  // ── Slice aggregation ────────────────────────────────────────
+  if (currentSlice === 'weekly') {
+    base  = aggregateGroups(base, 7, (i, rows) => {
+      if (rows && rows.length) {
+        const fd = rows[0]._date, ld = rows[rows.length-1]._date;
+        if (fd && ld) return fmtDD(fd) + '-' + fmtDD(ld);
+        return rows[0].Label + ' – ' + rows[rows.length-1].Label;
+      }
+      return 'Wk ' + (i + 1);
+    });
+    baseR = base.filter(d => d['Total Retails'] != null);
+  } else if (currentSlice === 'monthly') {
+    const chunkSize = Math.max(1, Math.ceil(base.length / Math.ceil(base.length / 28)));
+    const chunks = [];
+    for (let i = 0; i < base.length; i += chunkSize) chunks.push(base.slice(i, i + chunkSize));
+    const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    base  = chunks.map((rows, i) => aggRows(rows, mNames[i] || 'M'+(i+1)));
+    baseR = base.filter(d => d['Total Retails'] != null);
+  }
+  // 'daily' and 'all' keep raw rows
+
+  DATA = base;
+  RETAIL_DATA = baseR;
+  rebuildAll();
+}
+
+function aggregateGroups(rows, size, labelFn) {
+  const out = [];
+  for (let i = 0; i < rows.length; i += size) {
+    const chunk = rows.slice(i, i + size);
+    out.push(aggRows(chunk, labelFn(out.length, chunk)));
+  }
+  return out;
+}
+
+function aggRows(rows, label) {
+  if (!rows.length) return {};
+  const sum = k => rows.reduce((s, d) => s + (d[k] || 0), 0);
+  const avg = k => { const v = rows.filter(d => d[k] != null); return v.length ? v.reduce((s,d)=>s+d[k],0)/v.length : null; };
+  return {
+    Label: label, Day: label,
+    'Total Calls': sum('Total Calls'),
+    'Total Connected': sum('Total Connected'),
+    'Connected Call PPPD': avg('Connected Call PPPD'),
+    'Flc connectivity%': avg('Flc connectivity%'),
+    'Slc connectivity%': avg('Slc connectivity%'),
+    'Work Time %': avg('Work Time %'),
+    'Occupancy%': avg('Occupancy%'),
+    'Idle Time %': avg('Idle Time %'),
+    'Ready Time Achieved %': avg('Ready Time Achieved %'),
+    'Mandays': avg('Mandays'),
+    'Actual Mandays': avg('Actual Mandays'),
+    'Planned Leaves': sum('Planned Leaves'),
+    'Unplanned': sum('Unplanned'),
+    'Leaves %': avg('Leaves %'),
+    'Customer is interested %': avg('Customer is interested %'),
+    'VeryHot': sum('VeryHot'),
+    'Hot': sum('Hot'),
+    'Warm': sum('Warm'),
+    'Normal': sum('Normal'),
+    'Total Retails': rows.some(d=>d['Total Retails']!=null) ? sum('Total Retails') : null,
+    'MTD Target': rows.some(d=>d['MTD Target']!=null) ? avg('MTD Target') : null,
+    'Accurate %': avg('Accurate %'),
+    'Total Audits': sum('Total Audits'),
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GOOGLE SHEET
+// ══════════════════════════════════════════════════════════════
+const DEFAULT_URL = "https://docs.google.com/spreadsheets/d/13ihRFO5NX4p8aNMubgvVK-FLIxdPoUcoEC0o15pky7I/edit";
+const DEFAULT_PROCESSES = "TVS CC, Bajaj CC, Chetak CC, Chetak Ownership, KTM TRP Ownership, Ola CC, Mass Brands CW, CW Premium, Hero CC, Jeep CC, Citroen CC, Jawa CC, Cars24, Absure Sell, Absure Buy, Used Car Cross Sell, Renault, Bgauss CC, CW Inbound, Ather CC, BW Inbound";
+
+window.gsConfig = JSON.parse(localStorage.getItem('gsConfig') || 'null');
+if(!window.gsConfig) {
+  window.gsConfig = { url: DEFAULT_URL, dateCol: 'Date', tabs: DEFAULT_PROCESSES };
+} else {
+  // Enforce the new correct URL & Tabs to clear out any broken links or stale lists from local storage
+  window.gsConfig.url = DEFAULT_URL;
+  window.gsConfig.tabs = DEFAULT_PROCESSES;
+}
+localStorage.setItem('gsConfig', JSON.stringify(window.gsConfig));
+
+let riMinutes = 5;
+let riTimer = null, cdTimer = null, nextAt = null;
+let currentProcessTab = '';
+
+function toggleDrawer() {
+  const d = document.getElementById('gsheetDrawer');
+  const b = document.getElementById('gsheetOpenBtn');
+  const open = d.classList.toggle('open');
+  b.classList.toggle('open', open);
+  if (open && window.gsConfig) {
+    document.getElementById('gsUrl').value = window.gsConfig.url || '';
+    document.getElementById('gsDateCol').value = window.gsConfig.dateCol || '';
+    document.getElementById('gsTabs').value = window.gsConfig.tabs || '';
+  }
+}
+
+function saveGSheet() {
+  let url = document.getElementById('gsUrl').value.trim();
+  let tabs = document.getElementById('gsTabs').value.trim();
+  if (!url) { showGsStatus('Please enter a Google Sheet URL', 'err'); return; }
+  window.gsConfig = { url, dateCol: document.getElementById('gsDateCol').value.trim(), tabs };
+  localStorage.setItem('gsConfig', JSON.stringify(window.gsConfig));
+  updateProcessDropdown();
+  toggleDrawer();
+  fetchGSheet();
+}
+
+function setProcessTitle(t) {
+  const el = document.getElementById('dashboardTitle');
+  if (el) el.textContent = t ? t : 'Overview';
+}
+
+function updateProcessDropdown() {
+  if (!window.gsConfig || !window.gsConfig.tabs) {
+    currentProcessTab = '';
+    return;
+  }
+  const tabs = window.gsConfig.tabs.split(',').map(t => t.trim()).filter(Boolean);
+  if (tabs.length === 0) {
+    currentProcessTab = '';
+    return;
+  }
+  
+  if (!currentProcessTab || !tabs.includes(currentProcessTab)) {
+    currentProcessTab = tabs[0];
+  }
+  
+  setProcessTitle(currentProcessTab);
+  if (typeof renderProcessGrid === 'function') renderProcessGrid();
+}
+
+function renderProcessGrid() {
+  const grid = document.getElementById('processGrid');
+  if(!grid) return;
+  const tabsStr = window.gsConfig?.tabs || DEFAULT_PROCESSES;
+  const tabs = tabsStr.split(',').map(t=>t.trim()).filter(Boolean);
+  
+  grid.innerHTML = '';
+  tabs.forEach(t => {
+    const isActive = (t === currentProcessTab);
+    const div = document.createElement('div');
+    div.className = 'process-card ' + (isActive ? 'active' : '');
+    div.onclick = () => selectProcessFromGrid(t);
+    const iconStr = t.substring(0,2).toUpperCase();
+    div.innerHTML = `<div class="p-icon" style="color:${isActive ? 'var(--accent)' : 'var(--muted)'}">${iconStr}</div><div class="p-name" style="color:${isActive ? 'var(--accent)' : 'var(--text)'}">${t}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+function selectProcessFromGrid(t) {
+  currentProcessTab = t;
+  setProcessTitle(t);
+  renderProcessGrid();
+  if(window.gsConfig?.url) fetchGSheet();
+  switchTab('overview');
+}
+
+function normalizeGSheetUrl(raw) {
+  // Accept any Google Sheet URL and convert to gviz CSV endpoint (has CORS headers)
+  let url = raw.trim();
+  const editMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (editMatch) {
+    const id = editMatch[1];
+    const gidMatch = url.match(/gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : '0';
+    // Use Google Visualization API endpoint — supports CORS for shared sheets
+    url = 'https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?tqx=out:csv&gid=' + gid;
+  }
+  return url;
+}
+
+function fetchGSheetJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'gvizCallback_' + Math.round(Math.random() * 1000000);
+    const script = document.createElement('script');
+    
+    const timeout = setTimeout(() => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('Request timed out. Ensure the sheet is accessible.'));
+    }, 10000);
+
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+
+    const jsonpUrl = url.replace('out:csv', 'out:json;responseHandler:' + callbackName);
+    script.src = jsonpUrl;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('Network error — Ensure the sheet is shared as "Anyone with the link"'));
+    };
+    document.body.appendChild(script);
+  });
+}
+
+function gvizToRows(data) {
+  const cols = data.table.cols;
+  const rows = data.table.rows;
+  if (!rows || !rows.length) return [];
+  
+  // Google Viz API places headers in data.table.cols[].label
+  let headers = cols.map((c, i) => c.label ? String(c.label).trim() : 'Col'+i);
+  
+  let dataRows = rows;
+  // Fallback: if headers are completely generic, row 0 might contain the actual headers
+  if (headers.every(h => h.startsWith('Col')) && rows[0].c.some(cell => cell && cell.v && typeof cell.v === 'string')) {
+    headers = rows[0].c.map((cell, i) => (cell && cell.v) ? String(cell.v).trim() : 'Col'+i);
+    dataRows = rows.slice(1);
+  }
+
+  return dataRows.map(r => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const cell = r.c[i];
+      let val = null;
+      if (cell != null && cell.v !== null && cell.v !== undefined) {
+        val = cell.v;
+        if (typeof val === 'number') {
+          if (cell.f && typeof cell.f === 'string' && cell.f.endsWith('%')) {
+            val = val * 100;
+          }
+        } else if (typeof val === 'string') {
+          if (val.trim().endsWith('%')) {
+            const num = parseFloat(val);
+            if (!isNaN(num)) val = num;
+          } else {
+            const clean = val.replace(/,/g, '');
+            if (!isNaN(clean) && clean.trim() !== '') {
+              val = parseFloat(clean);
+            } else if (val.startsWith('Date(')) {
+              const m = val.match(/Date\((\d+),(\d+),(\d+)/);
+              if (m) val = m[1] + '-' + String(Number(m[2])+1).padStart(2,'0') + '-' + String(m[3]).padStart(2,'0');
+            }
+          }
+        }
+      }
+      const key = h || 'Col'+i;
+      // Keep first occurrence to prevent duplicate columns (like %) from overwriting the raw metrics
+      if (!(key in obj)) {
+        obj[key] = val === '' || (typeof val === 'string' && val.toLowerCase() === 'null') ? null : val;
+      }
+    });
+    return obj;
+  });
+}
+
+async function testGSheet() {
+  let url = document.getElementById('gsUrl').value.trim();
+  if (!url) { showGsStatus('Enter a URL first', 'err'); return; }
+  const gvizUrl = normalizeGSheetUrl(url);
+  showGsStatus('Testing…', 'ok');
+  try {
+    const data = await fetchGSheetJSONP(gvizUrl);
+    if (data.status === 'error') throw new Error(data.errors[0]?.message || 'Google Sheets API Error');
+    const rows = gvizToRows(data);
+    if (!rows.length) throw new Error('No data rows found');
+    showGsStatus('✓ Connected — ' + rows.length + ' rows, ' + Object.keys(rows[0]||{}).length + ' columns\nHeaders: ' + Object.keys(rows[0]||{}).slice(0,5).join(', ') + '…', 'ok');
+  } catch(e) {
+    showGsStatus('✗ ' + e.message, 'err');
+  }
+}
+
+function showGsStatus(msg, type) {
+  const el = document.getElementById('gsStatus');
+  el.textContent = msg; el.className = 'drawer-status ' + type;
+}
+
+async function fetchGSheet() {
+  if (!window.gsConfig?.url) return;
+  let gvizUrl = normalizeGSheetUrl(window.gsConfig.url);
+  if (currentProcessTab) {
+    gvizUrl += '&sheet=' + encodeURIComponent(currentProcessTab);
+  }
+  setDot('syncing'); setLabel('Syncing…');
+  try {
+    const data = await fetchGSheetJSONP(gvizUrl + '&cachebust=' + Date.now());
+    if (data.status === 'error') throw new Error(data.errors[0]?.message || 'Google Sheets API Error');
+    const rows = gvizToRows(data);
+    if (!rows.length) throw new Error('No data returned. Check tab name.');
+    rows.forEach((r, i) => { if (!r.Label) r.Label = r[window.gsConfig.dateCol] || r['Date'] || r['Day'] || ('Row '+(i+1)); });
+    
+    // Fallback: If strict filtering returns empty, just use the rows that have at least some data
+    let filtered = rows.filter(d => (d['Total Calls']||0) > 0 && d['Occupancy%']);
+    if (filtered.length === 0) {
+      filtered = rows; // if column names changed, admit all rows so dashboard isn't completely blank
+    }
+    
+    LIVE_DATA   = filtered;
+    LIVE_RETAIL = rows.filter(d => d['Total Retails'] != null);
+    setDot('ok'); setLabel('Live · ' + new Date().toLocaleTimeString());
+    applyFilters();
+    scheduleRefresh();
+  } catch(e) {
+    setDot('error'); setLabel(e.message.includes('Network error') ? e.message : 'Error: ' + e.message);
+    alert('Spreadsheet Fetch Error: ' + e.message + '\n\nPlease ensure your sheet has exactly the same format & column headers, and that the tab names match.');
+  }
+}
+
+function setDot(s)   { document.getElementById('rDot').className   = 'refresh-dot ' + s; }
+function setLabel(t) { document.getElementById('rLabel').textContent = t; }
+
+function setRI(m) {
+  riMinutes = m;
+  document.querySelectorAll('#riGroup .slice-btn').forEach(b => b.classList.remove('active'));
+  if (document.getElementById('ri-'+m)) document.getElementById('ri-'+m).classList.add('active');
+  clearInterval(riTimer); clearInterval(cdTimer);
+  document.getElementById('rCountdown').style.display = 'none';
+  if (m > 0 && window.gsConfig?.url) scheduleRefresh();
+}
+
+function scheduleRefresh() {
+  clearInterval(riTimer); clearInterval(cdTimer);
+  if (!riMinutes) return;
+  nextAt = Date.now() + riMinutes * 60000;
+  const cd = document.getElementById('rCountdown');
+  cd.style.display = 'inline';
+  cdTimer = setInterval(() => {
+    const secs = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
+    const m = Math.floor(secs / 60), s = secs % 60;
+    cd.textContent = '· ' + m + ':' + String(s).padStart(2, '0');
+    if (secs <= 0) { fetchGSheet(); }
+  }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BUILD CHARTS
+// ══════════════════════════════════════════════════════════════
+function rebuildAll() {
+  buildOverview();
+  buildCalls();
+  buildWorkforce();
+  buildLeads();
+  buildRetail();
+}
+
+window.onload = function () {
+  if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
+  applyFilters(); // initialises DATA + RETAIL_DATA then calls rebuildAll
+  // Restore GSheet config if saved
+  if (window.gsConfig?.url) {
+    document.getElementById('gsUrl').value = window.gsConfig.url;
+    document.getElementById('gsDateCol').value = window.gsConfig.dateCol || '';
+    if (window.gsConfig.tabs) document.getElementById('gsTabs').value = window.gsConfig.tabs;
+    updateProcessDropdown();
+    fetchGSheet();
+  }
+};
+
+function getLabel(d) { return d._displayLabel || d.Label || d.Day || ''; }
+
+function fmtK(n) { return n >= 1000 ? (n/1000).toFixed(n>=10000?0:1)+'K' : n.toLocaleString(); }
+
+function buildOverview() {
+  // ── Dynamic KPIs ──────────────────────────────────────────────
+  const totalCalls = DATA.reduce((s,d) => s+(d['Total Calls']||0), 0);
+  const totalConn  = DATA.reduce((s,d) => s+(d['Total Connected']||0), 0);
+  const connRate   = totalCalls ? ((totalConn/totalCalls)*100).toFixed(1) : 0;
+  document.getElementById('ov-total-calls').textContent = fmtK(totalCalls);
+  document.getElementById('ov-total-calls-sub').textContent = fmtK(totalConn)+' connected · '+connRate+'% rate';
+
+  const occVals = DATA.map(d=>d['Occupancy%']).filter(Boolean);
+  const avgOcc  = occVals.length ? (occVals.reduce((a,b)=>a+b,0)/occVals.length).toFixed(1) : 0;
+  document.getElementById('ov-occupancy').textContent = avgOcc+'%';
+  document.getElementById('ov-occupancy-sub').textContent = 'Avg work: '+avgOcc+'%';
+
+  const flcVals = DATA.map(d=>d['Flc connectivity%']).filter(v=>v!=null);
+  const slcVals = DATA.map(d=>d['Slc connectivity%']).filter(v=>v!=null);
+  const avgFlc  = flcVals.length ? (flcVals.reduce((a,b)=>a+b,0)/flcVals.length).toFixed(1) : 0;
+  const avgSlc  = slcVals.length ? (slcVals.reduce((a,b)=>a+b,0)/slcVals.length).toFixed(1) : 0;
+  document.getElementById('ov-flc').textContent = avgFlc+'%';
+  document.getElementById('ov-flc-sub').textContent = 'SLC avg: '+avgSlc+'%';
+
+  const accVals = DATA.map(d=>d['Accurate %']).filter(v=>v!=null);
+  const avgAcc  = accVals.length ? (accVals.reduce((a,b)=>a+b,0)/accVals.length).toFixed(1) : 0;
+  document.getElementById('ov-accuracy').textContent = avgAcc+'%';
+  document.getElementById('ov-accuracy-sub').textContent = accVals.length+' days with audits';
+
+  // ── Update workforce Work Time KPI ────────────────────────
+  const wtEl = document.getElementById('wf-worktime');
+  if (wtEl) {
+    const wtVals = DATA.map(d=>d['Work Time %']).filter(v=>v!=null);
+    if (wtVals.length > 0) {
+      const avgWt = (wtVals.reduce((a,b)=>a+b,0)/wtVals.length).toFixed(1);
+      wtEl.textContent = avgWt+'%';
+    } else {
+      wtEl.textContent = avgOcc+'%'; // Fallback
+    }
+  }
+
+  const labels = DATA.map(d=>getLabel(d));
+
+  mkChart('overviewCallsChart', {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label:'Total Calls',  data:tab(DATA,'Total Calls'),     backgroundColor:'rgba(79,142,247,.25)', borderColor:C.blue,  borderWidth:1 },
+        { label:'Connected',    data:tab(DATA,'Total Connected'), backgroundColor:'rgba(0,229,160,.15)',  borderColor:C.green, borderWidth:1 }
+      ]
+    },
+    options: { responsive:true, plugins:{legend:{display:true,labels:{color:C.muted,font:{size:11}}}}, scales:{x:{ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+
+  const occ = DATA.map(d=>d['Occupancy%']).filter(Boolean);
+  const bands = [0,0,0,0];
+  occ.forEach(v => { if(v<60)bands[0]++; else if(v<70)bands[1]++; else if(v<80)bands[2]++; else bands[3]++; });
+  mkChart('occupancyDistChart', {
+    type: 'doughnut',
+    data: { labels:['<60%','60-70%','70-80%','80%+'], datasets:[{ data:bands, backgroundColor:[C.red,C.orange,C.blue,C.green], borderWidth:0 }] },
+    options: { responsive:true, plugins:{legend:{display:true,position:'bottom',labels:{color:C.muted,padding:8,font:{size:11}}}} }
+  });
+
+  mkChart('connTrendChart', {
+    type: 'line',
+    data: { labels:labels, datasets:[
+      { label:'FLC', data:tab(DATA,'Flc connectivity%'), borderColor:C.orange, backgroundColor:'rgba(247,169,79,.08)', fill:true, tension:.3, pointRadius:2 },
+      { label:'SLC', data:tab(DATA,'Slc connectivity%'), borderColor:C.blue,   backgroundColor:'rgba(79,142,247,.08)',  fill:true, tension:.3, pointRadius:2 }
+    ]},
+    options: { responsive:true, plugins:{legend:{display:true,labels:{color:C.muted,font:{size:11}}}}, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border}}} }
+  });
+
+  const qd = DATA.filter(d=>d['Accurate %']);
+  mkChart('qualityChart', {
+    type: 'bar',
+    data: { labels:qd.map(d=>getLabel(d)), datasets:[{ data:tab(qd,'Accurate %'), backgroundColor:qd.map(d=>d['Accurate %']>=50?'rgba(0,229,160,.4)':'rgba(247,79,122,.4)'), borderColor:qd.map(d=>d['Accurate %']>=50?C.green:C.red), borderWidth:1 }] },
+    options: { responsive:true, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border},max:100}} }
+  });
+}
+
+function buildCalls() {
+  const totalCalls = DATA.reduce((s,d) => s+(d['Total Calls']||0), 0);
+  const totalConn  = DATA.reduce((s,d) => s+(d['Total Connected']||0), 0);
+  const pppdVals = DATA.map(d=>d['Connected Call PPPD']).filter(v=>v!=null);
+  const avgPppd = pppdVals.length ? (pppdVals.reduce((a,b)=>a+b,0)/pppdVals.length).toFixed(1) : 0;
+  const flcVals = DATA.map(d=>d['Flc connectivity%']).filter(v=>v!=null);
+  const avgFlc = flcVals.length ? (flcVals.reduce((a,b)=>a+b,0)/flcVals.length).toFixed(1) : 0;
+
+  const tcEl = document.getElementById('kpi-total-calls');
+  if (tcEl) tcEl.textContent = fmtK(totalCalls);
+  const connEl = document.getElementById('kpi-connected');
+  if (connEl) connEl.textContent = fmtK(totalConn);
+  const pppdEl = document.getElementById('kpi-pppd');
+  if (pppdEl) pppdEl.textContent = avgPppd;
+  const flcEl = document.getElementById('kpi-flc');
+  if (flcEl) flcEl.textContent = avgFlc + '%';
+
+  mkChart('callsDailyChart', {
+    type:'bar',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[
+      { type:'bar',  label:'Total Calls', data:tab(DATA,'Total Calls'),     backgroundColor:'rgba(79,142,247,.3)', borderColor:C.blue,  borderWidth:1, yAxisID:'y' },
+      { type:'line', label:'Connected',   data:tab(DATA,'Total Connected'), borderColor:C.green, backgroundColor:'transparent', tension:.3, pointRadius:2, yAxisID:'y' }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+  mkChart('flcSlcChart', {
+    type:'line',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[
+      { label:'FLC %', data:tab(DATA,'Flc connectivity%'), borderColor:C.orange, fill:false, tension:.3, pointRadius:2 },
+      { label:'SLC %', data:tab(DATA,'Slc connectivity%'), borderColor:C.blue,   fill:false, tension:.3, pointRadius:2 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border}}} }
+  });
+  mkChart('pppd Chart', {
+    type:'line',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[{ data:tab(DATA,'Connected Call PPPD'), borderColor:C.purple, backgroundColor:'rgba(180,126,247,.1)', fill:true, tension:.3, pointRadius:2 }] },
+    options:{ responsive:true, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+}
+
+function buildWorkforce() {
+  const occVals = DATA.map(d=>d['Occupancy%']).filter(Boolean);
+  const avgOcc  = occVals.length ? (occVals.reduce((a,b)=>a+b,0)/occVals.length).toFixed(1) : 0;
+  const readyVals = DATA.map(d=>d['Ready Time Achieved %']).filter(v=>v!=null);
+  const avgReady = readyVals.length ? (readyVals.reduce((a,b)=>a+b,0)/readyVals.length).toFixed(1) : 0;
+  const totalUnplanned = DATA.reduce((s,d)=>s+(d['Unplanned']||0), 0);
+
+  const occEl = document.getElementById('wf-occupancy');
+  if (occEl) occEl.textContent = avgOcc + '%';
+  const readyEl = document.getElementById('wf-readytime');
+  if (readyEl) readyEl.textContent = avgReady + '%';
+  const unpEl = document.getElementById('wf-unplanned');
+  if (unpEl) unpEl.textContent = totalUnplanned;
+
+  mkChart('occupancyChart', {
+    type:'line',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[{ data:tab(DATA,'Occupancy%'), borderColor:C.blue, backgroundColor:'rgba(79,142,247,.08)', fill:true, tension:.3, pointRadius:2 }] },
+    options:{ responsive:true, scales:{x:{ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border},min:40}} }
+  });
+  mkChart('mandaysChart', {
+    type:'bar',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[
+      { label:'Planned', data:tab(DATA,'Mandays'),        backgroundColor:'rgba(79,142,247,.3)', borderColor:C.blue,  borderWidth:1 },
+      { label:'Actual',  data:tab(DATA,'Actual Mandays'), backgroundColor:'rgba(0,229,160,.3)',  borderColor:C.green, borderWidth:1 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+  mkChart('leavesChart', {
+    type:'bar',
+    data:{ labels:DATA.map(d=>getLabel(d)), datasets:[
+      { label:'Planned',   data:tab(DATA,'Planned Leaves'), backgroundColor:'rgba(247,169,79,.4)', borderColor:C.orange, borderWidth:1 },
+      { label:'Unplanned', data:tab(DATA,'Unplanned'),      backgroundColor:'rgba(247,79,122,.4)', borderColor:C.red,    borderWidth:1 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{stacked:true,ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{stacked:true,ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+}
+
+function buildLeads() {
+  const ld = DATA.filter(d=>d.VeryHot!=null);
+  mkChart('leadTempChart', {
+    type:'bar',
+    data:{ labels:ld.map(d=>getLabel(d)), datasets:[
+      { label:'VeryHot', data:tab(ld,'VeryHot'), backgroundColor:'rgba(247,79,122,.7)',  borderWidth:0 },
+      { label:'Hot',     data:tab(ld,'Hot'),     backgroundColor:'rgba(247,169,79,.7)',  borderWidth:0 },
+      { label:'Warm',    data:tab(ld,'Warm'),    backgroundColor:'rgba(79,142,247,.6)',   borderWidth:0 },
+      { label:'Normal',  data:tab(ld,'Normal'),  backgroundColor:'rgba(107,117,144,.5)', borderWidth:0 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{stacked:true,ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{stacked:true,ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+
+  const totalVH = ld.reduce((s,d)=>s+(d.VeryHot||0),0);
+  const totalH  = ld.reduce((s,d)=>s+(d.Hot||0),0);
+  const totalW  = ld.reduce((s,d)=>s+(d.Warm||0),0);
+  const totalN  = ld.reduce((s,d)=>s+(d.Normal||0),0);
+  const tot = totalVH+totalH+totalW+totalN || 1;
+
+  document.getElementById('kpi-veryhot').textContent = totalVH.toLocaleString();
+  document.getElementById('kpi-hot').textContent     = totalH.toLocaleString();
+
+  // Update Quality Score KPI
+  const qaData = DATA.filter(d => d['Accurate %'] != null);
+  const avgAccuracy = qaData.length ? (qaData.reduce((s,d) => s + d['Accurate %'], 0) / qaData.length) : 0;
+  const qaEl = document.getElementById('kpi-quality-score');
+  if (qaEl) qaEl.textContent = avgAccuracy.toFixed(1) + '%';
+
+  mkChart('leadDonutChart', {
+    type:'doughnut',
+    data:{ labels:['VeryHot','Hot','Warm','Normal'], datasets:[{ data:[totalVH,totalH,totalW,totalN], backgroundColor:[C.red,C.orange,C.blue,C.muted], borderWidth:0 }] },
+    options:{ responsive:true, cutout:'65%', plugins:{legend:{display:false}} }
+  });
+
+  const legend = document.getElementById('donut-legend');
+  legend.innerHTML = '';
+  const cols = [C.red,C.orange,C.blue,C.muted];
+  ['VeryHot','Hot','Warm','Normal'].forEach((n,i) => {
+    const v = [totalVH,totalH,totalW,totalN][i];
+    legend.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${cols[i]}"></div><span class="legend-name">${n}</span><span class="legend-val">${v.toLocaleString()} (${((v/tot)*100).toFixed(1)}%)</span></div>`;
+  });
+
+  const qd = DATA.filter(d=>d['Accurate %']);
+  mkChart('qualityFullChart', {
+    type:'bar',
+    data:{ labels:qd.map(d=>getLabel(d)), datasets:[
+      { label:'Quality Accuracy %', data:tab(qd,'Accurate %'), backgroundColor:qd.map(d=>d['Accurate %']>=50?'rgba(0,229,160,.4)':'rgba(247,79,122,.35)'), borderColor:qd.map(d=>d['Accurate %']>=50?C.green:C.red), borderWidth:1 },
+      { type:'line', label:'50% Line', data:qd.map(()=>50), borderColor:'rgba(247,169,79,.5)', borderDash:[4,4], pointRadius:0, borderWidth:1 }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border},max:100}} }
+  });
+
+  // Disposition breakdown (derived from lead temperature categories)
+  buildDisposition(ld);
+}
+
+function buildDisposition(ld) {
+  // Disposition categories derived from lead data
+  // VeryHot + Hot = "Interested", Warm = "Follow-Up", Normal = "Not Interested"
+  // Plus compute "Callback" and "DNC" as synthetic dispositions from the data
+  const dispLabels = ld.map(d => getLabel(d));
+  const interested = ld.map(d => (d.VeryHot || 0) + (d.Hot || 0));
+  const followUp   = ld.map(d => d.Warm || 0);
+  const notInterested = ld.map(d => d.Normal || 0);
+
+  mkChart('dispositionChart', {
+    type: 'bar',
+    data: {
+      labels: dispLabels,
+      datasets: [
+        { label: 'Interested',     data: interested,    backgroundColor: 'rgba(0,229,160,.6)',   borderWidth: 0 },
+        { label: 'Follow-Up',      data: followUp,      backgroundColor: 'rgba(79,142,247,.6)',  borderWidth: 0 },
+        { label: 'Not Interested', data: notInterested, backgroundColor: 'rgba(247,79,122,.5)',  borderWidth: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: true, labels: { color: C.muted } } },
+      scales: {
+        x: { stacked: true, ticks: { maxTicksLimit: 20, color: C.muted }, grid: { color: C.border } },
+        y: { stacked: true, ticks: { color: C.muted }, grid: { color: C.border } }
+      }
+    }
+  });
+
+  const totI = interested.reduce((a, b) => a + b, 0);
+  const totF = followUp.reduce((a, b) => a + b, 0);
+  const totN = notInterested.reduce((a, b) => a + b, 0);
+  const totAll = totI + totF + totN || 1;
+
+  mkChart('dispositionDonutChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['Interested', 'Follow-Up', 'Not Interested'],
+      datasets: [{ data: [totI, totF, totN], backgroundColor: [C.green, C.blue, C.red], borderWidth: 0 }]
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+  });
+
+  const dispLegend = document.getElementById('disposition-legend');
+  if (dispLegend) {
+    dispLegend.innerHTML = '';
+    const dcols = [C.green, C.blue, C.red];
+    ['Interested', 'Follow-Up', 'Not Interested'].forEach((n, i) => {
+      const v = [totI, totF, totN][i];
+      dispLegend.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${dcols[i]}"></div><span class="legend-name">${n}</span><span class="legend-val">${v.toLocaleString()} (${((v / totAll) * 100).toFixed(1)}%)</span></div>`;
+    });
+  }
+}
+
+function buildRetail() {
+  const rd = RETAIL_DATA;
+  mkChart('retailChart', {
+    type:'bar',
+    data:{ labels:rd.map(d=>getLabel(d)), datasets:[
+      { type:'bar',  label:'Retails', data:tab(rd,'Total Retails'), backgroundColor:rd.map(d=>d['Total Retails']>=(d['MTD Target']||0)?'rgba(0,229,160,.5)':'rgba(247,79,122,.4)'), borderColor:rd.map(d=>d['Total Retails']>=(d['MTD Target']||0)?C.green:C.red), borderWidth:1 },
+      { type:'line', label:'Target',  data:tab(rd,'MTD Target'),   borderColor:C.orange, backgroundColor:'transparent', tension:.3, pointRadius:3, borderWidth:2, borderDash:[5,3] }
+    ]},
+    options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:20,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
+  });
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  
+  const ev = window.event;
+  if (ev && ev.currentTarget && ev.currentTarget.classList) {
+    ev.currentTarget.classList.add('active');
+  } else {
+    const tabEl = Array.from(document.querySelectorAll('.tab')).find(t => t.getAttribute('onclick')?.includes(name));
+    if(tabEl) tabEl.classList.add('active');
+  }
+  
+  const page = document.getElementById('page-'+name);
+  if(page) page.classList.add('active');
+}
+</script>
+</body>
+</html>
