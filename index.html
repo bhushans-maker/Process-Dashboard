@@ -539,7 +539,7 @@
     <div class="chart-card">
       <div class="chart-title">Connected Call PPPD</div>
       <div class="chart-subtitle">Per person per day trend</div>
-      <div class="chart-wrap"><canvas id="pppd Chart" height="140"></canvas></div>
+      <div class="chart-wrap"><canvas id="pppdChart" height="140"></canvas></div>
     </div>
   </div>
 </div>
@@ -1296,7 +1296,7 @@ function buildCalls() {
     ]},
     options:{ responsive:true, plugins:{legend:{display:true,labels:{color:C.muted}}}, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted,callback:v=>v+'%'},grid:{color:C.border}}} }
   });
-  mkChart('pppd Chart', {
+  mkChart('pppdChart', {
     type:'line',
     data:{ labels:DATA.map(d=>getLabel(d)), datasets:[{ data:tab(DATA,'Connected Call PPPD'), borderColor:C.purple, backgroundColor:'rgba(180,126,247,.1)', fill:true, tension:.3, pointRadius:2 }] },
     options:{ responsive:true, scales:{x:{ticks:{maxTicksLimit:15,color:C.muted},grid:{color:C.border}},y:{ticks:{color:C.muted},grid:{color:C.border}}} }
@@ -1476,6 +1476,11 @@ function switchTab(name) {
   
   const page = document.getElementById('page-'+name);
   if(page) page.classList.add('active');
+
+  // Resize all charts after the tab becomes visible so hidden-tab charts get correct dimensions
+  setTimeout(() => {
+    Object.values(CHARTS).forEach(c => { try { if(c) c.resize(); } catch(e){} });
+  }, 20);
 }
 </script>
 </body>
